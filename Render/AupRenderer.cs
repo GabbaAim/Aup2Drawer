@@ -175,10 +175,9 @@ public class AupRenderer : IDisposable
             // 拡大・縮小を適用 (オブジェクトの座標をグループの原点を中心に拡大)
             transform.Position *= groupScale;
 
-            // 回転を適用 (Vector2.Transformを使うのがより正確だが、まずは単純な加算で)
-            // TODO: 正確な回転を実装する場合は、オブジェクトの座標をグループの原点を中心に回転させる
-            // Vector2 rotatedPos = Vector2.Transform(transform.Position, Matrix3x2.CreateRotation(MathHelper.ToRadians(groupRotationZ)));
-            // transform.Position = rotatedPos;
+            // 回転を適用
+            Vector2 rotatedPos = Vector2.Transform(transform.Position, Matrix3x2.CreateRotation(MathHelper.ToRadians(groupRotationZ)));
+            transform.Position = rotatedPos;
 
             // 平行移動を適用
             transform.Position = originPosition + groupPosition;

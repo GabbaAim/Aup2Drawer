@@ -1,4 +1,4 @@
-﻿# Aup2Drawer
+﻿﻿# Aup2Drawer
 Aup2Drawerは、AviUtlのプロジェクトファイル(.aup)からエクスポートされたオブジェクトファイル(.aup2形式のテキスト)をパースし、Raylib-csを使用してリアルタイムで描画するためのライブラリです。
 ## 主な機能
 * .aup2形式のテキストファイルのパースとオブジェクト構造の構築
@@ -6,41 +6,85 @@ Aup2Drawerは、AviUtlのプロジェクトファイル(.aup)からエクスポ�
 * 中間点を含むオブジェクトの再生
 * グループ制御
 * 一部フィルター効果の適用
+## 使い方（Program.csより）
+```
+using Aup2Drawer;
+using Aup2Drawer.Renderer;
+using Raylib_cs;
+
+// --- 1. パース ---
+var parser = new AupParser(); // パーサーを初期化
+var project = parser.Parse("path/to/your/animation.aup2"); // path/to/your/animation.aup2の部分は描画したいaup2ファイルのパスに置換
+
+// --- 2. 初期化 ---
+Raylib.InitWindow(project.Width, project.Height, "Aup2Drawer Example"); // aup2のサイズに合わせられる
+Raylib.SetTargetFPS(project.Rate); // aup2のフレームレートに合わせられる
+var renderer = new AupRenderer(project); // レンダラーを初期化
+
+int currentFrame = 0;
+
+// --- 3. メインループ ---
+while (!Raylib.WindowShouldClose())
+{
+    currentFrame = (currentFrame + 1) % (project.Length + 1);
+
+    Raylib.BeginDrawing();
+    Raylib.BeginBlendMode(BlendMode.Alpha); // 内部でrlgl.SrtBlendMode()を用いて合成モードを切り替えているので、これがないと合成モードが正しく切り替わらない
+    Raylib.ClearBackground(Color.Black);
+
+    renderer.DrawFrame(currentFrame);
+
+    Raylib.EndBlendMode();
+    Raylib.EndDrawing();
+}
+
+// --- 4. クリーンアップ ---
+renderer.Dispose();
+Raylib.CloseWindow();
+```
 ## 対応仕様
 ### オブジェクトとプロパティ
-機能	対応状況	備考
-基本オブジェクト	✅	画像ファイル、グループ制御
-中間点	✅	1つのオブジェクトに複数のキーフレームを持つ構造に対応
-座標 (X, Y, Z)	✅	Z座標はパースされますが、2D描画では使用されません
-拡大率	✅	
-透明度	✅	
-回転	✅	Z軸回転のみ対応
-縦横比	✅	
+機能 | 対応状況 | 備考
+--- | --- | ---
+基本オブジェクト | ✅ | 画像ファイル、グループ制御
+中間点 | ✅ | 1つのオブジェクトに複数のキーフレームを持つ構造に対応
+座標 (X, Y, Z) | ✅ | Z座標はパースされますが、2D描画では使用されません
+拡大率 | ✅ | 
+透明度 | ✅ | 
+回転 | ⚠️ | Z軸回転のみ対応
+縦横比 | ✅ | 
 ### 移動方法
-移動方法	対応状況	備考
-直線移動	✅	線形補間として実装
-瞬間移動	✅	区間中は始点の値を維持
-補間移動	✅	EaseInOutSine関数による近似実装
-時間制御	✅	3次ベジェ曲線（スプライン）として実装
-その他	⚠️	未対応の移動方法はすべて「直線移動」として処理されます
+移動方法 | 対応状況 | 備考
+--- | --- | ---
+直線移動 | ✅ | 線形補間として実装
+瞬間移動 | ✅ | 区間中は始点の値を維持
+補間移動 | ⚠️ | EaseInOutSine関数による**近似**実装
+時間制御 | ✅ | 3次ベジェ曲線（スプライン）として実装
+その他	 | ❌ | 未対応の移動方法はすべて「直線移動」として処理されます
 ### 合成モード（ブレンドモード）
-合成モード	対応状況
-通常	✅
-加算	✅
-減算	✅
-乗算	✅
-その他	❌
+合成モード | 対応状況 | 対応したRaylib-csのBlendMode
+--- | --- | ---
+通常 | ✅ | BlendMode.Alpha
+加算 | ✅ | BlendMode.Additive
+減算 | ✅ | BlendMode.SubtractColors
+乗算 | ✅ | BlendMode.Multiplied
+その他 | ❌ | 未対応の合成モードは通常モードとして扱われます
 ### フィルター効果
-フィルター	対応状況	備考
-拡大率	✅	基準拡大率、X、Yに対応
-反転	✅	上下反転、左右反転に対応
-その他	❌	未対応のフィルターは無視されます
+フィルター | 対応状況 | 備考
+--- | --- | ---
+拡大率 | ✅ | 基準拡大率、X、Yに対応
+反転 | ⚠️ | 上下反転、左右反転にのみ対応
+その他 | ❌ | 未対応のフィルターは無視されます
 ## 未対応・制限事項
-音声オブジェクト: 音声関連のデータはすべて無視されます。
-カメラ制御: カメラ制御オブジェクトには対応していません。
-マスク効果: マスクおよびクリッピング関連のフィルターには対応していません。
-テキストオブジェクト: テキストオブジェクトの描画には対応していません。
-スクリプト制御: anmやobjなどのスクリプトによるアニメーションには対応していません。
-3D関連のプロパティ: X軸回転, Y軸回転 など、3Dに関連するプロパティは無視されます。
+* 音声/図形オブジェクト
+  * 未対応のデータはすべて無視されます。
+* カメラ制御
+  * カメラ制御オブジェクトには対応していません。
+* テキストオブジェクト
+  * テキストオブジェクトの描画には対応していません。
+* スクリプト制御
+  * スクリプトによる制御には対応していません。
+* 3D関連のプロパティ
+  * X軸回転, Y軸回転 など、3Dに関連するプロパティは無視されます。
 ## 謝辞
 Texture.csはazarea09様の[Potesara](https://github.com/azarea09/Potesara/blob/master/Texture.cs)をお借りさせていただいております。
