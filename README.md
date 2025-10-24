@@ -87,4 +87,4 @@ Raylib.CloseWindow();
 * 3D関連のプロパティ
   * X軸回転, Y軸回転 など、3Dに関連するプロパティは無視されます。
 ## 謝辞
-Texture.csはazarea09様の[Potesara](https://github.com/azarea09/Potesara/blob/master/Texture.cs)をお借りさせていただいております。
+Texture.csはazarea09様の[Potesara](https://github.com/azarea09/Potesara/blob/master/Texture.cs)をお借りしています。
