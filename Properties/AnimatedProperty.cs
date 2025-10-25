@@ -8,7 +8,7 @@ public class AnimatedProperty<T>
     public string DebugName { get; set; } = "Unnamed";
     public List<Keyframe<T>> Keyframes { get; } = new();
 
-    public void AddKeyframe(int frame, T value, InterpolationType interpolation, List<SplineKnot> splineKnots = null)
+    public void AddKeyframe(int frame, T value, InterpolationType interpolation, List<SplineKnot> splineKnots = null, int easingType = 0)
     {
         // 同じフレームにキーが既にあれば上書き、なければ追加
         var existingKeyframe = Keyframes.FirstOrDefault(k => k.Frame == frame);
@@ -16,7 +16,7 @@ public class AnimatedProperty<T>
         {
             Keyframes.Remove(existingKeyframe);
         }
-        Keyframes.Add(new Keyframe<T>(frame, value, interpolation, splineKnots));
+        Keyframes.Add(new Keyframe<T>(frame, value, interpolation, splineKnots, easingType));
         Keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
     }
 
@@ -77,19 +77,24 @@ public class AnimatedProperty<T>
 
             // 進行度 (0.0 ～ 1.0)
             double progress = (double)(frame - startTime) / (endTime - startTime);
+            double easedProgress = progress;
 
-            float interpolatedValue;
             switch (startKey.Interpolation)
             {
                 case InterpolationType.Instant:
-                    // 瞬間移動: 終点の値をそのまま使う
-                    interpolatedValue = endValue;
+                    // 瞬間移動: 終点にジャンプ
+                    easedProgress = 1.0;
                     break;
 
                 case InterpolationType.Interpolated:
                     // 補間移動: EaseInOutSineを適用
-                    double easedProgress = EasingFunctions.EaseInOutSine(progress);
-                    interpolatedValue = (float)(startValue + (endValue - startValue) * easedProgress);
+                    easedProgress = startKey.EasingType switch
+                    {
+                        0 => progress,
+                        1 => EasingFunctions.EaseInSine(progress),
+                        2 => EasingFunctions.EaseOutSine(progress),
+                        _ => EasingFunctions.EaseInOutSine(progress) // 3, default
+                    };
                     break;
 
                 case InterpolationType.TimeCtrl:
@@ -130,29 +135,25 @@ public class AnimatedProperty<T>
                             }
 
                             // 4. ベジェ曲線で進行度を再計算
-                            float easedProgress_CT = EasingFunctions.CubicBezier(localProgress, p0, p1, p2, p3);
-                            interpolatedValue = (float)(startValue + (endValue - startValue) * easedProgress_CT);
+                            easedProgress = EasingFunctions.CubicBezier(localProgress, p0, p1, p2, p3);
                         }
-                        else
-                        {
-                            // セグメントが見つからない場合は直線移動
-                            interpolatedValue = (float)(startValue + (endValue - startValue) * progress);
-                        }
-                    }
-                    else
-                    {
-                        // データがない場合は直線移動
-                        interpolatedValue = (float)(startValue + (endValue - startValue) * progress);
                     }
                     break;
 
                 case InterpolationType.Linear:
                 default:
                     // 直線移動 (または不明な場合)
-                    interpolatedValue = (float)(startValue + (endValue - startValue) * progress);
+                    easedProgress = startKey.EasingType switch
+                    {
+                        1 => EasingFunctions.EaseInQuad(progress),
+                        2 => EasingFunctions.EaseOutQuad(progress),
+                        3 => EasingFunctions.EaseInOutQuad(progress),
+                        _ => progress // 0, default
+                    };
                     break;
             }
 
+            float interpolatedValue = (float)(startValue + (endValue - startValue) * easedProgress);
             return (T)(object)interpolatedValue;
         }
 

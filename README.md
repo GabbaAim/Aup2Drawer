@@ -56,9 +56,9 @@ Raylib.CloseWindow();
 ### 移動方法
 移動方法 | 対応状況 | 備考
 --- | --- | ---
-直線移動 | ✅ | 線形補間として実装
-瞬間移動 | ✅ | 区間中は始点の値を維持
-補間移動 | ⚠️ | EaseInOutSine関数による**近似**実装
+直線移動 | ✅ | デフォルトでは線形補間、加速の場合EaseInQuad、減速の場合EaseOutQuad、加減速の場合EaseInOutQuadでそれぞれ近似
+瞬間移動 | ✅ | 区間に入ったら終点の値になる
+補間移動 | ✅ | デフォルト（加減速ON）ではEaseInOutSine、加速の場合EaseInSine、減速の場合EaseOutSine、加減速なしの場合線形補間でそれぞれ近似
 時間制御 | ✅ | 3次ベジェ曲線（スプライン）として実装
 その他	 | ❌ | 未対応の移動方法はすべて「直線移動」として処理されます
 ### 合成モード（ブレンドモード）
@@ -87,4 +87,4 @@ Raylib.CloseWindow();
 * 3D関連のプロパティ
   * X軸回転, Y軸回転 など、3Dに関連するプロパティは無視されます。
 ## 謝辞
-Texture.csはazarea09様の[Potesara](https://github.com/azarea09/Potesara/blob/master/Texture.cs)をお借りさせていただいております。
+Texture.csはazarea09様の[Potesara](https://github.com/azarea09/Potesara/blob/master/Texture.cs)からお借りしています。

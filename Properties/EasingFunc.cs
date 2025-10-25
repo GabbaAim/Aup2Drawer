@@ -2,9 +2,17 @@
 
 public static class EasingFunctions
 {
-    public static float EaseInOutSine(double progress)
+    // --- Sine Functions ---
+    public static float EaseInSine(double p) => (float)(1.0 - Math.Cos((p * Math.PI) / 2.0));
+    public static float EaseOutSine(double p) => (float)Math.Sin((p * Math.PI) / 2.0);
+    public static float EaseInOutSine(double p) => (float)(-(Math.Cos(Math.PI * p) - 1.0) / 2.0);
+
+    // --- Quad Functions ---
+    public static float EaseInQuad(double p) => (float)(p * p);
+    public static float EaseOutQuad(double p) => (float)(1.0 - (1.0 - p) * (1.0 - p));
+    public static float EaseInOutQuad(double p)
     {
-        return (float)(-(Math.Cos(Math.PI * progress) - 1.0) / 2.0);
+        return (float)(p < 0.5 ? 2.0 * p * p : 1.0 - Math.Pow(-2.0 * p + 2.0, 2.0) / 2.0);
     }
 
     /// <summary>

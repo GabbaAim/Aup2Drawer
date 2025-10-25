@@ -35,6 +35,7 @@ public class StandardDrawingEffect : AupEffect
         var values = parts.Where(p => float.TryParse(p, out _)).Select(float.Parse).ToArray();
 
         var interpolationStr = parts.FirstOrDefault(p => !float.TryParse(p, out _));
+        int.TryParse(parts.LastOrDefault(), out int easingType);
         var interpolation = interpolationStr switch
         {
             "直線移動" => InterpolationType.Linear,
@@ -86,14 +87,12 @@ public class StandardDrawingEffect : AupEffect
         }
 
         // 最初のキーフレームにスプライン情報を格納
-        targetProperty.AddKeyframe(segments[0].StartFrame, values[0], interpolation, knots);
+        targetProperty.AddKeyframe(segments[0].StartFrame, values[0], interpolation, knots, easingType);
 
-        // 中間点と最後のキーフレーム
         for (int i = 0; i < segments.Count; i++)
         {
             float val = (i + 1 < values.Length) ? values[i + 1] : values.Last();
-            // 2つ目以降のキーフレームにはスプライン情報は不要
-            targetProperty.AddKeyframe(segments[i].EndFrame, val, interpolation);
+            targetProperty.AddKeyframe(segments[i].EndFrame, val, interpolation, null, easingType);
         }
     }
 }
