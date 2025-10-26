@@ -26,6 +26,11 @@ public class AupRenderer : IDisposable
     public bool IsPlaying { get; private set; } = false;
 
     /// <summary>
+    /// 再生が（ループせずに）終了したかどうか
+    /// </summary>
+    public bool IsFinished { get; private set; } = false;
+
+    /// <summary>
     /// レンダラーを初期化します。
     /// </summary>
     /// <param name="project">描画するAupProject</param>
@@ -67,6 +72,10 @@ public class AupRenderer : IDisposable
     /// </summary>
     public void Play()
     {
+        if (IsFinished)
+        {
+            Reset(); // フレームをリセットしてから再生
+        }
         IsPlaying = true;
     }
 
@@ -84,6 +93,7 @@ public class AupRenderer : IDisposable
     public void Reset()
     {
         IsPlaying = false;
+        IsFinished = false;
         CurrentFrame = 0;
         _internalTime = 0;
     }
@@ -95,6 +105,11 @@ public class AupRenderer : IDisposable
     /// <param name="offsetY">描画全体のYオフセット</param>
     public void UpdateAndDraw(float offsetX = 0, float offsetY = 0)
     {
+        if (IsFinished)
+        {
+            return;
+        }
+
         // --- フレーム更新処理 ---
         if (IsPlaying)
         {
@@ -114,6 +129,7 @@ public class AupRenderer : IDisposable
                     // 再生終了
                     CurrentFrame = _project.Length;
                     Stop();
+                    IsFinished = true;
                 }
             }
         }
@@ -305,6 +321,8 @@ public class AupRenderer : IDisposable
             reverseX: transform.InvertX,
             reverseY: transform.InvertY
         );
+
+        Rlgl.SetBlendMode(BlendMode.Alpha);
     }
 
     /// <summary>
