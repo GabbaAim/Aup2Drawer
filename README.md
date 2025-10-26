@@ -14,26 +14,35 @@ using Aup2Drawer.Renderer;
 using Raylib_cs;
 
 // --- 1. パース ---
-var parser = new AupParser(); // パーサーを初期化
+var parser = new AupParser();
 var project = parser.Parse("path/to/your/animation.aup2"); // path/to/your/animation.aup2の部分は描画したいaup2ファイルのパスに置換
 
 // --- 2. 初期化 ---
-Raylib.InitWindow(project.Width, project.Height, "Aup2Drawer Example"); // aup2のサイズに合わせられる
-Raylib.SetTargetFPS(project.Rate); // aup2のフレームレートに合わせられる
-var renderer = new AupRenderer(project); // レンダラーを初期化
+Raylib.InitWindow(project.Width, project.Height, "Aup2Drawer Example");
 
-int currentFrame = 0;
+// アプリケーション自体のFPSを設定 (アニメーションのFPSとは独立)
+Raylib.SetTargetFPS(120);
+
+// --- レンダラーの初期化オプション ---
+// 例1: ループ再生する。
+var renderer = new AupRenderer(project, isLooping: true);
+
+// 例2: ループせず、再生が終了したら停止
+// var renderer = new AupRenderer(project, isLooping: false);
+
+// 再生開始
+renderer.Play();
 
 // --- 3. メインループ ---
 while (!Raylib.WindowShouldClose())
 {
-    currentFrame = (currentFrame + 1) % (project.Length + 1);
-
+    // --- 描画 ---
     Raylib.BeginDrawing();
     Raylib.BeginBlendMode(BlendMode.Alpha); // 内部でrlgl.SrtBlendMode()を用いて合成モードを切り替えているので、これがないと合成モードが正しく切り替わらない
     Raylib.ClearBackground(Color.Black);
 
-    renderer.DrawFrame(currentFrame);
+    // レンダラーに更新と描画を任せる
+    renderer.UpdateAndDraw();
 
     Raylib.EndBlendMode();
     Raylib.EndDrawing();

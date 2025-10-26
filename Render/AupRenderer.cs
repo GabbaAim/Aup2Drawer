@@ -12,9 +12,28 @@ public class AupRenderer : IDisposable
     // テクスチャをファイルパスでキャッシュするためのDictionary
     private readonly Dictionary<string, Texture> _textureCache = new();
 
-    public AupRenderer(AupProject project)
+    private readonly bool _isLooping;
+    private double _internalTime = 0;
+
+    /// <summary>
+    /// 現在の再生フレーム
+    /// </summary>
+    public int CurrentFrame { get; private set; } = 0;
+
+    /// <summary>
+    /// 再生中かどうか
+    /// </summary>
+    public bool IsPlaying { get; private set; } = false;
+
+    /// <summary>
+    /// レンダラーを初期化します。
+    /// </summary>
+    /// <param name="project">描画するAupProject</param>
+    /// <param name="isLooping">アニメーションをループ再生するかどうか</param>
+    public AupRenderer(AupProject project, bool isLooping = true)
     {
         _project = project;
+        _isLooping = isLooping;
         PreloadTextures();
     }
 
@@ -42,10 +61,69 @@ public class AupRenderer : IDisposable
         }
     }
 
+    // 再生制御メソッドを追加
+    /// <summary>
+    /// 再生を開始します。
+    /// </summary>
+    public void Play()
+    {
+        IsPlaying = true;
+    }
+
+    /// <summary>
+    /// 再生を停止します。
+    /// </summary>
+    public void Stop()
+    {
+        IsPlaying = false;
+    }
+
+    /// <summary>
+    /// 再生をリセットし、フレームを0に戻します。
+    /// </summary>
+    public void Reset()
+    {
+        IsPlaying = false;
+        CurrentFrame = 0;
+        _internalTime = 0;
+    }
+
+    /// <summary>
+    /// フレームを更新し、描画します。
+    /// </summary>
+    public void UpdateAndDraw()
+    {
+        // --- フレーム更新処理 ---
+        if (IsPlaying)
+        {
+            _internalTime += Raylib.GetFrameTime();
+            CurrentFrame = (int)(_internalTime * _project.Rate);
+
+            if (CurrentFrame > _project.Length)
+            {
+                if (_isLooping)
+                {
+                    // ループ
+                    CurrentFrame %= (_project.Length + 1);
+                    _internalTime = (double)CurrentFrame / _project.Rate;
+                }
+                else
+                {
+                    // 再生終了
+                    CurrentFrame = _project.Length;
+                    Stop();
+                }
+            }
+        }
+
+        // --- 描画処理 ---
+        DrawInternal(CurrentFrame);
+    }
+
     /// <summary>
     /// 指定されたフレームを描画する
     /// </summary>
-    public void DrawFrame(int frame)
+    public void DrawInternal(int frame)
     {
         float screenCenterX = _project.Width / 2.0f;
         float screenCenterY = _project.Height / 2.0f;
@@ -204,7 +282,7 @@ public class AupRenderer : IDisposable
             BlendModeType.Add => BlendMode.Additive,
             BlendModeType.Subtract => BlendMode.SubtractColors,
             BlendModeType.Multiply => BlendMode.Multiplied,
-            
+
             // 未対応のモードは通常描画
             _ => BlendMode.Alpha
         };
