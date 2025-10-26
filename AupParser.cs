@@ -1,7 +1,7 @@
 ﻿using Aup2Drawer.Core;
 using Aup2Drawer.Effects;
 using Aup2Drawer.Properties;
-using System.Text;
+using System.IO;
 using System.Text.RegularExpressions;
 
 namespace Aup2Drawer;
@@ -16,6 +16,8 @@ public class AupParser
     public AupProject Parse(string filePath)
     {
         var project = new AupProject();
+        // .aup2ファイルの親ディレクトリを取得
+        string baseDirectory = Path.GetDirectoryName(filePath);
         var lines = File.ReadLines(filePath);
 
         AupObject currentObject = null;
@@ -154,7 +156,21 @@ public class AupParser
                         {
                             if (key == "ファイル")
                             {
-                                imageFileEffect.FilePath = value;
+                                string pathFromFile = value;
+                                string finalPath;
+
+                                // パスが絶対パスかどうかを判定
+                                if (Path.IsPathRooted(pathFromFile))
+                                {
+                                    // 絶対パスの場合はそのまま使用
+                                    finalPath = pathFromFile;
+                                }
+                                else
+                                {
+                                    // 相対パスの場合は、.aup2ファイルの場所を基準に結合
+                                    finalPath = Path.Combine(baseDirectory, pathFromFile);
+                                }
+                                imageFileEffect.FilePath = finalPath;
                             }
                         }
                         else if (currentEffect is ScaleFilterEffect scaleFilterEffect)
