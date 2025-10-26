@@ -89,9 +89,11 @@ public class AupRenderer : IDisposable
     }
 
     /// <summary>
-    /// フレームを更新し、描画します。
+    /// フレームを更新し、指定されたオフセット位置に描画します。
     /// </summary>
-    public void UpdateAndDraw()
+    /// <param name="offsetX">描画全体のXオフセット</param>
+    /// <param name="offsetY">描画全体のYオフセット</param>
+    public void UpdateAndDraw(float offsetX = 0, float offsetY = 0)
     {
         // --- フレーム更新処理 ---
         if (IsPlaying)
@@ -117,16 +119,21 @@ public class AupRenderer : IDisposable
         }
 
         // --- 描画処理 ---
-        DrawInternal(CurrentFrame);
+        DrawInternal(CurrentFrame, offsetX, offsetY);
     }
 
     /// <summary>
     /// 指定されたフレームを描画する
     /// </summary>
-    public void DrawInternal(int frame)
+    private void DrawInternal(int frame, float offsetX, float offsetY)
     {
-        float screenCenterX = _project.Width / 2.0f;
-        float screenCenterY = _project.Height / 2.0f;
+        // AviUtlの原点(0,0)は画面中央なので、プロジェクトサイズの半分を加算
+        float originOffsetX = _project.Width / 2.0f;
+        float originOffsetY = _project.Height / 2.0f;
+
+        // 最終的なオフセットを計算
+        float finalOffsetX = offsetX + originOffsetX;
+        float finalOffsetY = offsetY + originOffsetY;
 
         // レイヤーが小さい順（奥から）に描画
         foreach (var obj in _project.Objects.OrderBy(o => o.Layer))
@@ -175,7 +182,7 @@ public class AupRenderer : IDisposable
             ApplyGroupControls(frame, obj, ref finalTransform);
 
             // --- ステップ3: 最終的なTransformを使って描画 ---
-            DrawObject(texture, finalTransform, drawingEffect, screenCenterX, screenCenterY);
+            DrawObject(texture, finalTransform, drawingEffect, finalOffsetX, finalOffsetY);
         }
     }
 
@@ -270,7 +277,7 @@ public class AupRenderer : IDisposable
     /// <summary>
     /// 最終的なTransform情報を使ってオブジェクトを描画する
     /// </summary>
-    private void DrawObject(Texture texture, Transform transform, StandardDrawingEffect effect, float screenCenterX, float screenCenterY)
+    private void DrawObject(Texture texture, Transform transform, StandardDrawingEffect effect, float totalOffsetX, float totalOffsetY)
     {
         texture.ReferencePoint = ReferencePoint.Center;
         texture.Scale = transform.Scale;
@@ -290,8 +297,8 @@ public class AupRenderer : IDisposable
         Rlgl.SetBlendMode(raylibBlendMode);
 
         texture.Draw(
-            screenCenterX + transform.Position.X,
-            screenCenterY + transform.Position.Y,
+            totalOffsetX + transform.Position.X,
+            totalOffsetY + transform.Position.Y,
             transform.RotationZ,
             sourceRect: null,
             drawOrigin: null,

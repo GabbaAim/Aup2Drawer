@@ -30,8 +30,17 @@ while (!Raylib.WindowShouldClose())
     Raylib.BeginBlendMode(BlendMode.Alpha); // 内部でrlgl.SrtBlendMode()を用いて合成モードを切り替えているので、これがないと合成モードが正しく切り替わらない
     Raylib.ClearBackground(Color.Black);
 
-    // レンダラーに更新と描画を任せる
-    renderer.UpdateAndDraw();
+    // --- 描画位置の指定 ---
+    // 例1: ウィンドウの中央に描画する
+    float drawPosX = (Raylib.GetScreenWidth() - project.Width) / 2.0f;
+    float drawPosY = (Raylib.GetScreenHeight() - project.Height) / 2.0f;
+    renderer.UpdateAndDraw(drawPosX, drawPosY);
+
+    // 例2: ウィンドウの左上に描画する (デフォルト)
+    // renderer.UpdateAndDraw(0, 0);
+
+    // 例3: マウスカーソルの位置に描画する
+    // renderer.UpdateAndDraw(Raylib.GetMouseX(), Raylib.GetMouseY());
 
     Raylib.EndBlendMode();
     Raylib.EndDrawing();
