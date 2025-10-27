@@ -4,7 +4,7 @@ using Raylib_cs;
 
 // --- 1. パース ---
 var parser = new AupParser();
-var project = parser.Parse("path/to/your/animation.aup2"); // path/to/your/animation.aup2の部分は描画したいaup2ファイルのパスに置換
+var project = parser.Parse("path/to/your/animation.aup2.aup2"); // path/to/your/animation.aup2の部分は描画したいaup2ファイルのパスに置換
 
 // --- 2. 初期化 ---
 Raylib.InitWindow(project.Width, project.Height, "Aup2Drawer Example");

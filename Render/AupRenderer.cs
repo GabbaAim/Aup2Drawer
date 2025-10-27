@@ -245,11 +245,6 @@ public class AupRenderer : IDisposable
     /// </summary>
     private void ApplyGroupControls(int frame, AupObject obj, ref Transform transform)
     {
-        var originPosition = new Vector2(
-                transform.Position.X,
-                transform.Position.Y
-                );
-
         // GroupControlsリストはオブジェクトに近い順（レイヤー降順）にソート済み
         foreach (var groupObj in obj.GroupControls)
         {
@@ -267,21 +262,23 @@ public class AupRenderer : IDisposable
             var groupRotationZ = groupEffect.RotationZ.GetValue(frame);
             var groupOpacity = 1.0f - (groupEffect.Opacity.GetValue(frame) / 100.0f);
 
-            // --- 行列演算に基づいた変換 ---
-            // 1. 回転
-            // 2. 拡大・縮小
-            // 3. 平行移動
-            // RaylibのDrawTextureProは内部でこれに近い処理をしているので、各要素を正しく合成する
+            // --- 正しい行列演算に基づいた変換 ---
 
-            // 拡大・縮小を適用 (オブジェクトの座標をグループの原点を中心に拡大)
+            // 1. 拡大・縮小を適用
+            //    現在のオブジェクトの位置を、グループの原点(0,0)からの相対ベクトルとみなし、拡大する。
             transform.Position *= groupScale;
 
-            // 回転を適用
-            Vector2 rotatedPos = Vector2.Transform(transform.Position, Matrix3x2.CreateRotation(MathHelper.ToRadians(groupRotationZ)));
-            transform.Position = rotatedPos;
+            // 2. 回転を適用
+            //    拡大後の位置ベクトルを、グループの原点(0,0)を中心に回転させる。
+            if (groupRotationZ != 0)
+            {
+                var rotMatrix = Matrix3x2.CreateRotation(MathHelper.ToRadians(groupRotationZ));
+                transform.Position = Vector2.Transform(transform.Position, rotMatrix);
+            }
 
-            // 平行移動を適用
-            transform.Position = originPosition + groupPosition;
+            // 3. 平行移動を適用
+            //    グループ自体の位置を加算する。
+            transform.Position += groupPosition;
 
             // その他のプロパティを合成
             transform.Scale *= groupScale;

@@ -21,6 +21,7 @@ public class AupParser
         var lines = File.ReadLines(filePath);
 
         AupObject currentObject = null;
+        AupEffect currentEffect = null;
         string currentSectionName = null;
 
         foreach (var line in lines)
@@ -40,16 +41,18 @@ public class AupParser
                     int id = int.Parse(objectMatch.Groups[1].Value);
                     currentObject = new AupObject(id);
                     project.Objects.Add(currentObject);
+                    currentEffect = null;
                 }
                 else if (effectMatch.Success)
                 {
                     // エフェクトセクション ([0.0], [0.1]など)
-                    // この時点では何もしない (effect.nameを見てから生成するため)
+                    currentEffect = null;
                 }
                 else
                 {
                     // その他のセクション ([project], [scene.0]など)
-                    currentObject = null; // オブジェクト処理モードを解除
+                    currentObject = null;
+                    currentEffect = null;
                 }
                 continue;
             }
@@ -99,7 +102,7 @@ public class AupParser
                 {
                     if (key == "effect.name")
                     {
-                        AupEffect newEffect = value switch
+                        currentEffect = value switch
                         {
                             "標準描画" => new StandardDrawingEffect(),
                             "画像ファイル" => new ImageFileEffect(),
@@ -108,13 +111,10 @@ public class AupParser
                             "反転" => new InvertFilterEffect(),
                             _ => new UnknownEffect(value)
                         };
-                        currentObject.Effects.Add(newEffect);
+                        currentObject.Effects.Add(currentEffect);
                     }
                     else
                     {
-                        // 最新のエフェクトを取得
-                        var currentEffect = currentObject.Effects.LastOrDefault();
-
                         // StandardDrawingEffect または GroupControlEffect のプロパティをパース
                         if (currentEffect is StandardDrawingEffect drawingEffect)
                         {
@@ -126,10 +126,12 @@ public class AupParser
                                     "加算" => BlendModeType.Add,
                                     "減算" => BlendModeType.Subtract,
                                     "乗算" => BlendModeType.Multiply,
+                                    /*
                                     "スクリーン" => BlendModeType.Screen,
                                     "オーバーレイ" => BlendModeType.Overlay,
                                     "比較(明)" => BlendModeType.Lighten,
                                     "比較(暗)" => BlendModeType.Darken,
+                                    */
                                     _ => BlendModeType.Unknown
                                 };
                             }
@@ -137,8 +139,20 @@ public class AupParser
                             {
                                 drawingEffect.SetPropertyFromValueString(key, value, currentObject.Segments);
                             }
-
-                            drawingEffect.SetPropertyFromValueString(key, value, currentObject.Segments);
+                        }
+                        else if (currentEffect is ImageFileEffect imageFileEffect)
+                        {
+                            if (key == "ファイル")
+                            {
+                                if (Path.IsPathRooted(value))
+                                {
+                                    imageFileEffect.FilePath = value;
+                                }
+                                else
+                                {
+                                    imageFileEffect.FilePath = Path.Combine(baseDirectory, value);
+                                }
+                            }
                         }
                         else if (currentEffect is GroupControlEffect groupControlEffect)
                         {
@@ -152,96 +166,103 @@ public class AupParser
                                 groupControlEffect.SetPropertyFromValueString(key, value, currentObject.Segments);
                             }
                         }
-                        else if (currentEffect is ImageFileEffect imageFileEffect)
-                        {
-                            if (key == "ファイル")
-                            {
-                                string pathFromFile = value;
-                                string finalPath;
-
-                                // パスが絶対パスかどうかを判定
-                                if (Path.IsPathRooted(pathFromFile))
-                                {
-                                    // 絶対パスの場合はそのまま使用
-                                    finalPath = pathFromFile;
-                                }
-                                else
-                                {
-                                    // 相対パスの場合は、.aup2ファイルの場所を基準に結合
-                                    finalPath = Path.Combine(baseDirectory, pathFromFile);
-                                }
-                                imageFileEffect.FilePath = finalPath;
-                            }
-                        }
                         else if (currentEffect is ScaleFilterEffect scaleFilterEffect)
                         {
                             scaleFilterEffect.SetPropertyFromValueString(key, value, currentObject.Segments);
                         }
                         else if (currentEffect is InvertFilterEffect invertFilterEffect)
                         {
-                            if (key == "上下反転")
-                            {
-                                invertFilterEffect.InvertY = (value == "1");
-                            }
-                            else if (key == "左右反転")
-                            {
-                                invertFilterEffect.InvertX = (value == "1");
-                            }
+                            if (key == "上下反転") invertFilterEffect.InvertY = (value == "1");
+                            else if (key == "左右反転") invertFilterEffect.InvertX = (value == "1");
                         }
                     }
                 }
             }
+        }
 
-            // --- グループ制御の関連付け ---
-            var groupObjects = project.Objects
-                .Where(o => o.Effects.Any(e => e is GroupControlEffect))
-                .ToList();
-
-            foreach (var obj in project.Objects)
+        // 全てのパースが終わった後に、一度だけソートする
+        foreach (var obj in project.Objects)
+        {
+            foreach (var effect in obj.Effects)
             {
-                if (!obj.Segments.Any()) continue;
-
-                foreach (var groupObj in groupObjects)
+                if (effect is StandardDrawingEffect d)
                 {
-                    if (!groupObj.Segments.Any()) continue;
-                    if (obj.Layer <= groupObj.Layer) continue;
+                    d.X.SortKeyframes();
+                    d.Y.SortKeyframes();
+                    d.Z.SortKeyframes();
+                    d.Scale.SortKeyframes();
+                    d.Opacity.SortKeyframes();
+                    d.RotationZ.SortKeyframes();
+                    d.AspectRatio.SortKeyframes();
+                }
+                else if (effect is GroupControlEffect g)
+                {
+                    g.X.SortKeyframes();
+                    g.Y.SortKeyframes();
+                    g.Z.SortKeyframes();
+                    g.Scale.SortKeyframes();
+                    g.Opacity.SortKeyframes();
+                    g.RotationZ.SortKeyframes();
+                }
+                else if (effect is ScaleFilterEffect s)
+                {
+                    s.BaseScale.SortKeyframes();
+                    s.X.SortKeyframes();
+                    s.Y.SortKeyframes();
+                }
+            }
+        }
 
-                    var groupEffect = groupObj.Effects.OfType<GroupControlEffect>().FirstOrDefault();
-                    if (groupEffect == null) continue;
+        // --- グループ制御の関連付け ---
+        var groupObjects = project.Objects
+            .Where(o => o.Effects.Any(e => e is GroupControlEffect))
+            .ToList();
 
-                    // 対象レイヤー範囲内かチェック
-                    // TargetLayerCountが0の場合は範囲無限として扱う
-                    bool isInRange = (groupEffect.TargetLayerCount == 0) ||
-                                     (obj.Layer <= groupObj.Layer + groupEffect.TargetLayerCount);
+        foreach (var obj in project.Objects)
+        {
+            if (!obj.Segments.Any()) continue;
 
-                    if (isInRange)
+            foreach (var groupObj in groupObjects)
+            {
+                if (!groupObj.Segments.Any()) continue;
+                if (obj.Layer <= groupObj.Layer) continue;
+
+                var groupEffect = groupObj.Effects.OfType<GroupControlEffect>().FirstOrDefault();
+                if (groupEffect == null) continue;
+
+                // 対象レイヤー範囲内かチェック
+                // TargetLayerCountが0の場合は範囲無限として扱う
+                bool isInRange = (groupEffect.TargetLayerCount == 0) ||
+                                 (obj.Layer <= groupObj.Layer + groupEffect.TargetLayerCount);
+
+                if (isInRange)
+                {
+                    // 時間的な重複があるかチェック
+                    int objStart = obj.Segments.First().StartFrame;
+                    int objEnd = obj.Segments.Last().EndFrame;
+                    int groupStart = groupObj.Segments.First().StartFrame;
+                    int groupEnd = groupObj.Segments.Last().EndFrame;
+                    if (objStart <= groupEnd && objEnd >= groupStart)
                     {
-                        // 時間的な重複があるかチェック
-                        int objStart = obj.Segments.First().StartFrame;
-                        int objEnd = obj.Segments.Last().EndFrame;
-                        int groupStart = groupObj.Segments.First().StartFrame;
-                        int groupEnd = groupObj.Segments.Last().EndFrame;
-                        if (objStart <= groupEnd && objEnd >= groupStart)
-                        {
-                            obj.GroupControls.Add(groupObj);
-                        }
+                        obj.GroupControls.Add(groupObj);
                     }
                 }
-
-                // オブジェクトに近い順（レイヤー番号が大きい順）にソート
-                obj.GroupControls.Sort((a, b) => b.Layer.CompareTo(a.Layer));
             }
 
-            if (project.Objects.Any(o => o.Segments.Any()))
-            {
-                project.Length = project.Objects
-                    .SelectMany(o => o.Segments)
-                    .Max(s => s.EndFrame);
-            }
-            else
-            {
-                project.Length = 0;
-            }
+            // オブジェクトに近い順（レイヤー番号が大きい順）にソート
+            obj.GroupControls.Sort((a, b) => b.Layer.CompareTo(a.Layer));
+        }
+
+
+        if (project.Objects.Any(o => o.Segments.Any()))
+        {
+            project.Length = project.Objects
+                .SelectMany(o => o.Segments)
+                .Max(s => s.EndFrame);
+        }
+        else
+        {
+            project.Length = 0;
         }
 
         return project;

@@ -17,6 +17,15 @@ public class AnimatedProperty<T>
             Keyframes.Remove(existingKeyframe);
         }
         Keyframes.Add(new Keyframe<T>(frame, value, interpolation, splineKnots, easingType));
+        //Keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
+    }
+
+    /// <summary>
+    /// 内部のキーフレームリストをフレーム順にソートします。
+    /// パース完了後に一度だけ呼び出すことを想定しています。
+    /// </summary>
+    public void SortKeyframes()
+    {
         Keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
     }
 
@@ -48,23 +57,22 @@ public class AnimatedProperty<T>
             return Keyframes.Last().Value;
         }
 
-        // 中間のフレームの場合、2つのキーフレームを探す
-        Keyframe<T> startKey = null;
-        Keyframe<T> endKey = null;
-        for (int i = 0; i < Keyframes.Count - 1; i++)
-        {
-            if (frame >= Keyframes[i].Frame && frame < Keyframes[i + 1].Frame)
-            {
-                startKey = Keyframes[i];
-                endKey = Keyframes[i + 1];
-                break;
-            }
-        }
+        // --- 二分探索で現在のフレームが含まれる区間を探す ---
+        int index = Keyframes.BinarySearch(new Keyframe<T>(frame, default, default), Comparer<Keyframe<T>>.Create((a, b) => a.Frame.CompareTo(b.Frame)));
 
-        // ちょうどキーフレーム上のフレームだった場合
-        if (startKey == null)
+        Keyframe<T> startKey, endKey;
+
+        if (index >= 0)
         {
-            return Keyframes.First(k => k.Frame == frame).Value;
+            // フレームがキーフレームに完全に一致した場合
+            return Keyframes[index].Value;
+        }
+        else
+        {
+            // 一致しなかった場合、BinarySearchは次に大きい要素のインデックスのビット補数を返す
+            int nextIndex = ~index;
+            startKey = Keyframes[nextIndex - 1];
+            endKey = Keyframes[nextIndex];
         }
 
         // --- 補間計算 ---
