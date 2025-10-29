@@ -45,7 +45,8 @@ while (!Raylib.WindowShouldClose())
     // 例1: ウィンドウの中央に描画する
     float drawPosX = (Raylib.GetScreenWidth() - project.Width) / 2.0f;
     float drawPosY = (Raylib.GetScreenHeight() - project.Height) / 2.0f;
-    renderer.UpdateAndDraw(drawPosX, drawPosY);
+
+    renderer.UpdateAndDraw(drawPosX, drawPosY); // 25/10/29 drawPosYのあとに秒数を指定するとその秒数だけフェードインして描画されるように
 
     // 例2: ウィンドウの左上に描画する (デフォルト)
     // renderer.UpdateAndDraw(0, 0);
@@ -93,7 +94,7 @@ Raylib.CloseWindow();
 --- | --- | ---
 拡大率 | ✅ | 基準拡大率、X、Yに対応
 反転 | ⚠️ | 上下反転、左右反転にのみ対応
-その他 | ❌ | 未対応のフィルターは無視されます
+その他 | ❌ | 未対応のフィルターは無視されます（が、透明度とかは使えるはず）
 ## 未対応・制限事項
 * 音声/図形オブジェクト
   * 未対応のデータはすべて無視されます。

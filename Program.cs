@@ -4,7 +4,7 @@ using Raylib_cs;
 
 // --- 1. パース ---
 var parser = new AupParser();
-var project = parser.Parse("path/to/your/animation.aup2.aup2"); // path/to/your/animation.aup2の部分は描画したいaup2ファイルのパスに置換
+var project = parser.Parse("path/to/your/animation.aup2"); // path/to/your/animation.aup2の部分は描画したいaup2ファイルのパスに置換
 
 // --- 2. 初期化 ---
 Raylib.InitWindow(project.Width, project.Height, "Aup2Drawer Example");
@@ -35,12 +35,6 @@ while (!Raylib.WindowShouldClose())
     float drawPosX = (Raylib.GetScreenWidth() - project.Width) / 2.0f;
     float drawPosY = (Raylib.GetScreenHeight() - project.Height) / 2.0f;
     renderer.UpdateAndDraw(drawPosX, drawPosY);
-
-    // 例2: ウィンドウの左上に描画する (デフォルト)
-    // renderer.UpdateAndDraw(0, 0);
-
-    // 例3: マウスカーソルの位置に描画する
-    // renderer.UpdateAndDraw(Raylib.GetMouseX(), Raylib.GetMouseY());
 
     Raylib.EndBlendMode();
     Raylib.EndDrawing();

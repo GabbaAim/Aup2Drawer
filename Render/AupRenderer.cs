@@ -16,6 +16,12 @@ public class AupRenderer : IDisposable
     private double _internalTime = 0;
 
     /// <summary>
+    /// 各オブジェクトが最初に表示された時刻を記録する
+    /// </summary>
+    private readonly Dictionary<AupObject, double> _objectAppearTimes = new();
+    private double _rendererTime = 0; // レンダラー全体の経過時間
+
+    /// <summary>
     /// 現在の再生フレーム
     /// </summary>
     public int CurrentFrame { get; private set; } = 0;
@@ -76,6 +82,7 @@ public class AupRenderer : IDisposable
         {
             Reset(); // フレームをリセットしてから再生
         }
+        _rendererTime = (double)CurrentFrame / _project.Rate;
         IsPlaying = true;
     }
 
@@ -96,6 +103,8 @@ public class AupRenderer : IDisposable
         IsFinished = false;
         CurrentFrame = 0;
         _internalTime = 0;
+        _objectAppearTimes.Clear();
+        _rendererTime = 0;
     }
 
     /// <summary>
@@ -103,7 +112,7 @@ public class AupRenderer : IDisposable
     /// </summary>
     /// <param name="offsetX">描画全体のXオフセット</param>
     /// <param name="offsetY">描画全体のYオフセット</param>
-    public void UpdateAndDraw(float offsetX = 0, float offsetY = 0)
+    public void UpdateAndDraw(float offsetX = 0, float offsetY = 0, float fadeInDuration = 0)
     {
         if (IsFinished)
         {
@@ -113,7 +122,9 @@ public class AupRenderer : IDisposable
         // --- フレーム更新処理 ---
         if (IsPlaying)
         {
-            _internalTime += Raylib.GetFrameTime();
+            float frameTime = Raylib.GetFrameTime();
+            _internalTime += frameTime;
+            _rendererTime += frameTime; // レンダラー全体の時間も更新
             CurrentFrame = (int)(_internalTime * _project.Rate);
 
             if (CurrentFrame > _project.Length)
@@ -135,13 +146,13 @@ public class AupRenderer : IDisposable
         }
 
         // --- 描画処理 ---
-        DrawInternal(CurrentFrame, offsetX, offsetY);
+        DrawInternal(CurrentFrame, offsetX, offsetY, fadeInDuration);
     }
 
     /// <summary>
     /// 指定されたフレームを描画する
     /// </summary>
-    private void DrawInternal(int frame, float offsetX, float offsetY)
+    private void DrawInternal(int frame, float offsetX, float offsetY, float fadeInDuration)
     {
         // AviUtlの原点(0,0)は画面中央なので、プロジェクトサイズの半分を加算
         float originOffsetX = _project.Width / 2.0f;
@@ -154,7 +165,12 @@ public class AupRenderer : IDisposable
         // レイヤーが小さい順（奥から）に描画
         foreach (var obj in _project.Objects.OrderBy(o => o.Layer))
         {
-            if (!obj.IsVisible(frame)) continue;
+            if (!obj.IsVisible(frame))
+            {
+                // オブジェクトが非表示になったら出現時刻をリセット
+                _objectAppearTimes.Remove(obj);
+                continue;
+            }
 
             var drawingEffect = obj.Effects.OfType<StandardDrawingEffect>().FirstOrDefault();
             var imageFileEffect = obj.Effects.OfType<ImageFileEffect>().FirstOrDefault();
@@ -196,6 +212,26 @@ public class AupRenderer : IDisposable
 
             // --- ステップ2: グループ制御のTransformを適用 ---
             ApplyGroupControls(frame, obj, ref finalTransform);
+
+            if (fadeInDuration > 0)
+            {
+                // オブジェクトが初めて現れたかチェック
+                if (!_objectAppearTimes.ContainsKey(obj))
+                {
+                    // 初めてなら現在の時刻を記録
+                    _objectAppearTimes[obj] = _rendererTime;
+                }
+
+                // 描画開始からの経過時間を計算
+                double appearTime = _objectAppearTimes[obj];
+                double elapsedTime = _rendererTime - appearTime;
+
+                // フェードインの進行度 (0.0 to 1.0) を計算
+                float fadeInProgress = Math.Clamp((float)(elapsedTime / fadeInDuration), 0.0f, 1.0f);
+
+                // 最終的な透明度にフェードイン効果を乗算
+                finalTransform.Opacity *= fadeInProgress;
+            }
 
             // --- ステップ3: 最終的なTransformを使って描画 ---
             DrawObject(texture, finalTransform, drawingEffect, finalOffsetX, finalOffsetY);
