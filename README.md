@@ -33,6 +33,10 @@ var renderer = new AupRenderer(project, isLooping: true);
 // 再生開始
 renderer.Play();
 
+// アプリケーションの経過時間を管理するためのStopwatch
+var appStopwatch = new Stopwatch();
+appStopwatch.Start();
+
 // --- 3. メインループ ---
 while (!Raylib.WindowShouldClose())
 {
@@ -42,11 +46,12 @@ while (!Raylib.WindowShouldClose())
     Raylib.ClearBackground(Color.Black);
 
     // --- 描画位置の指定 ---
+    float appTime = (float)appStopwatch.Elapsed.TotalSeconds;
     // 例1: ウィンドウの中央に描画する
     float drawPosX = (Raylib.GetScreenWidth() - project.Width) / 2.0f;
     float drawPosY = (Raylib.GetScreenHeight() - project.Height) / 2.0f;
 
-    renderer.UpdateAndDraw(drawPosX, drawPosY); // 25/10/29 drawPosYのあとに秒数を指定するとその秒数だけフェードインして描画されるように
+    renderer.UpdateAndDraw(appTime, drawPosX, drawPosY); //ここで描画、4つ目の引数として時間を入れるとその時間だけフェードインしながら描画
 
     // 例2: ウィンドウの左上に描画する (デフォルト)
     // renderer.UpdateAndDraw(0, 0);
