@@ -16,9 +16,9 @@ public class AupRenderer : IDisposable
     private double _internalTime = 0;
 
     /// <summary>
-    /// 各オブジェクトが最初に表示されたアプリケーション時刻を記録する
+    /// 最初に描画が呼び出されたアプリケーション時刻
     /// </summary>
-    private readonly Dictionary<AupObject, float> _objectAppearTimes = new();
+    private float? _firstDrawTime = null;
 
     /// <summary>
     /// 現在の再生フレーム
@@ -101,7 +101,7 @@ public class AupRenderer : IDisposable
         IsFinished = false;
         CurrentFrame = 0;
         _internalTime = 0;
-        _objectAppearTimes.Clear();
+        _firstDrawTime = null;
     }
 
     /// <summary>
@@ -114,6 +114,11 @@ public class AupRenderer : IDisposable
     public void UpdateAndDraw(float appTime, float offsetX = 0, float offsetY = 0, float fadeInDuration = 0)
     {
         if (IsFinished) return;
+
+        if (_firstDrawTime == null)
+        {
+            _firstDrawTime = appTime;
+        }
 
         // --- フレーム更新処理 ---
         if (IsPlaying)
@@ -157,13 +162,18 @@ public class AupRenderer : IDisposable
         float finalOffsetX = offsetX + originOffsetX;
         float finalOffsetY = offsetY + originOffsetY;
 
+        float overallFadeAlpha = 1.0f;
+        if (fadeInDuration > 0 && _firstDrawTime.HasValue)
+        {
+            float elapsedTime = appTime - _firstDrawTime.Value;
+            overallFadeAlpha = Math.Clamp(elapsedTime / fadeInDuration, 0.0f, 1.0f);
+        }
+
         // レイヤーが小さい順（奥から）に描画
         foreach (var obj in _project.Objects.OrderBy(o => o.Layer))
         {
             if (!obj.IsVisible(frame))
             {
-                // オブジェクトが非表示になったら出現時刻をリセット
-                _objectAppearTimes.Remove(obj);
                 continue;
             }
 
@@ -208,20 +218,7 @@ public class AupRenderer : IDisposable
             // --- ステップ2: グループ制御のTransformを適用 ---
             ApplyGroupControls(frame, obj, ref finalTransform);
 
-            if (fadeInDuration > 0)
-            {
-                if (!_objectAppearTimes.ContainsKey(obj))
-                {
-                    // 初めてなら現在のアプリケーション時刻を記録
-                    _objectAppearTimes[obj] = appTime;
-                }
-
-                float appearTime = _objectAppearTimes[obj];
-                float elapsedTime = appTime - appearTime;
-
-                float fadeInProgress = Math.Clamp(elapsedTime / fadeInDuration, 0.0f, 1.0f);
-                finalTransform.Opacity *= fadeInProgress;
-            }
+            finalTransform.Opacity *= overallFadeAlpha;
 
             // --- ステップ3: 最終的なTransformを使って描画 ---
             DrawObject(texture, finalTransform, drawingEffect, finalOffsetX, finalOffsetY);
