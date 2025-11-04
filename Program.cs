@@ -23,24 +23,21 @@ var renderer = new AupRenderer(project, isLooping: true);
 // 再生開始
 renderer.Play();
 
-// アプリケーションの経過時間を管理するためのStopwatch
-var appStopwatch = new Stopwatch();
-appStopwatch.Start();
-
 // --- 3. メインループ ---
 while (!Raylib.WindowShouldClose())
 {
+    renderer.Update();
+
     // --- 描画 ---
     Raylib.BeginDrawing();
     Raylib.BeginBlendMode(BlendMode.Alpha); // 内部でrlgl.SrtBlendMode()を用いて合成モードを切り替えているので、これがないと合成モードが正しく切り替わらない
     Raylib.ClearBackground(Color.Black);
 
     // --- 描画位置の指定 ---
-    float appTime = (float)appStopwatch.Elapsed.TotalSeconds;
     // 例1: ウィンドウの中央に描画する
     float drawPosX = (Raylib.GetScreenWidth() - project.Width) / 2.0f;
     float drawPosY = (Raylib.GetScreenHeight() - project.Height) / 2.0f;
-    renderer.UpdateAndDraw(appTime, drawPosX, drawPosY);
+    renderer.Draw(drawPosX, drawPosY);
 
     Raylib.EndBlendMode();
     Raylib.EndDrawing();

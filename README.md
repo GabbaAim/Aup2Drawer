@@ -20,44 +20,32 @@ var project = parser.Parse("path/to/your/animation.aup2"); // path/to/your/anima
 // --- 2. 初期化 ---
 Raylib.InitWindow(project.Width, project.Height, "Aup2Drawer Example");
 
-// アプリケーション自体のFPSを設定 (アニメーションのFPSとは独立)
-Raylib.SetTargetFPS(120);
+Raylib.SetTargetFPS(120); // アプリケーション自体のFPSを設定 (アニメーションのFPSとは独立)
 
 // --- レンダラーの初期化オプション ---
-// 例1: ループ再生する。
+// 例1: ループ再生する
 var renderer = new AupRenderer(project, isLooping: true);
 
 // 例2: ループせず、再生が終了したら停止
 // var renderer = new AupRenderer(project, isLooping: false);
 
-// 再生開始
-renderer.Play();
-
-// アプリケーションの経過時間を管理するためのStopwatch
-var appStopwatch = new Stopwatch();
-appStopwatch.Start();
+renderer.Play(); // 再生開始
 
 // --- 3. メインループ ---
 while (!Raylib.WindowShouldClose())
 {
+    renderer.Update(); //1フレームに1度更新
+
     // --- 描画 ---
     Raylib.BeginDrawing();
     Raylib.BeginBlendMode(BlendMode.Alpha); // 内部でrlgl.SrtBlendMode()を用いて合成モードを切り替えているので、これがないと合成モードが正しく切り替わらない
     Raylib.ClearBackground(Color.Black);
 
     // --- 描画位置の指定 ---
-    float appTime = (float)appStopwatch.Elapsed.TotalSeconds;
-    // 例1: ウィンドウの中央に描画する
+    // 例: ウィンドウの中央に描画する
     float drawPosX = (Raylib.GetScreenWidth() - project.Width) / 2.0f;
     float drawPosY = (Raylib.GetScreenHeight() - project.Height) / 2.0f;
-
-    renderer.UpdateAndDraw(appTime, drawPosX, drawPosY); //ここで描画、4つ目の引数として時間を入れるとその時間だけフェードインしながら描画
-
-    // 例2: ウィンドウの左上に描画する (デフォルト)
-    // renderer.UpdateAndDraw(0, 0);
-    
-    // 例3: マウスカーソルの位置に描画する
-    // renderer.UpdateAndDraw(Raylib.GetMouseX(), Raylib.GetMouseY());
+    renderer.Draw(drawPosX, drawPosY); //ここで描画、3つ目の引数として時間を入れるとその時間だけフェードインしながら描画
 
     Raylib.EndBlendMode();
     Raylib.EndDrawing();

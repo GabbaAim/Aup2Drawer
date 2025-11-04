@@ -2,6 +2,7 @@
 using Aup2Drawer.Effects;
 using Aup2Drawer.Properties;
 using Raylib_cs;
+using System.Diagnostics;
 using System.Numerics;
 
 namespace Aup2Drawer.Renderer;
@@ -14,6 +15,11 @@ public class AupRenderer : IDisposable
 
     private readonly bool _isLooping;
     private double _internalTime = 0;
+
+    /// <summary>
+    /// このレンダラーインスタンスの生存時間を計測するタイマー
+    /// </summary>
+    private readonly Stopwatch _instanceStopwatch = new();
 
     /// <summary>
     /// 最初に描画が呼び出されたアプリケーション時刻
@@ -82,6 +88,7 @@ public class AupRenderer : IDisposable
             Reset(); // フレームをリセットしてから再生
         }
         IsPlaying = true;
+        _instanceStopwatch.Start();
     }
 
     /// <summary>
@@ -90,6 +97,7 @@ public class AupRenderer : IDisposable
     public void Stop()
     {
         IsPlaying = false;
+        _instanceStopwatch.Stop();
     }
 
     /// <summary>
@@ -102,57 +110,62 @@ public class AupRenderer : IDisposable
         CurrentFrame = 0;
         _internalTime = 0;
         _firstDrawTime = null;
+        _instanceStopwatch.Reset();
     }
 
     /// <summary>
-    /// フレームを更新し、指定されたオフセット位置に描画します。
+    /// レンダラーの状態を1フレーム分更新します。
+    /// このメソッドは、描画ループの更新セクションで1フレームに1回だけ呼び出してください。
     /// </summary>
-    /// <param name="appTime">アプリケーションの現在時間（秒）</param>
+    public void Update()
+    {
+        if (IsFinished || !IsPlaying) return; // 終了しているか、再生中でなければ何もしない
+
+        _internalTime += Raylib.GetFrameTime();
+        CurrentFrame = (int)(_internalTime * _project.Rate);
+
+        if (CurrentFrame > _project.Length)
+        {
+            if (_isLooping)
+            {
+                CurrentFrame %= (_project.Length + 1);
+                _internalTime = (double)CurrentFrame / _project.Rate;
+            }
+            else
+            {
+                CurrentFrame = _project.Length;
+                Stop();
+                IsFinished = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 現在のフレームを指定されたオフセット位置に描画します。
+    /// このメソッドは内部状態を変更しません。1フレームに複数回呼び出すことができます。
+    /// </summary>
     /// <param name="offsetX">描画全体のXオフセット</param>
     /// <param name="offsetY">描画全体のYオフセット</param>
     /// <param name="fadeInDuration">オブジェクト表示時のフェードイン時間（秒）</param>
-    public void UpdateAndDraw(float appTime, float offsetX = 0, float offsetY = 0, float fadeInDuration = 0)
+    public void Draw(float offsetX = 0, float offsetY = 0, float fadeInDuration = 0)
     {
         if (IsFinished) return;
 
+        // 内部タイマーの現在時刻を取得
+        float instanceTime = (float)_instanceStopwatch.Elapsed.TotalSeconds;
         if (_firstDrawTime == null)
         {
-            _firstDrawTime = appTime;
+            _firstDrawTime = instanceTime;
         }
 
-        // --- フレーム更新処理 ---
-        if (IsPlaying)
-        {
-            float frameTime = Raylib.GetFrameTime();
-            _internalTime += frameTime;
-            CurrentFrame = (int)(_internalTime * _project.Rate);
-
-            if (CurrentFrame > _project.Length)
-            {
-                if (_isLooping)
-                {
-                    // ループ
-                    CurrentFrame %= (_project.Length + 1);
-                    _internalTime = (double)CurrentFrame / _project.Rate;
-                }
-                else
-                {
-                    // 再生終了
-                    CurrentFrame = _project.Length;
-                    Stop();
-                    IsFinished = true;
-                }
-            }
-        }
-
-        // --- 描画処理 ---
-        DrawInternal(CurrentFrame, appTime, offsetX, offsetY, fadeInDuration);
+        // 描画処理本体を呼び出す
+        DrawInternal(CurrentFrame, instanceTime, offsetX, offsetY, fadeInDuration);
     }
 
     /// <summary>
     /// 指定されたフレームを描画する
     /// </summary>
-    private void DrawInternal(int frame, float appTime, float offsetX, float offsetY, float fadeInDuration)
+    private void DrawInternal(int frame, float instanceTime, float offsetX, float offsetY, float fadeInDuration)
     {
         // AviUtlの原点(0,0)は画面中央なので、プロジェクトサイズの半分を加算
         float originOffsetX = _project.Width / 2.0f;
@@ -165,7 +178,7 @@ public class AupRenderer : IDisposable
         float overallFadeAlpha = 1.0f;
         if (fadeInDuration > 0 && _firstDrawTime.HasValue)
         {
-            float elapsedTime = appTime - _firstDrawTime.Value;
+            float elapsedTime = instanceTime - _firstDrawTime.Value;
             overallFadeAlpha = Math.Clamp(elapsedTime / fadeInDuration, 0.0f, 1.0f);
         }
 
@@ -204,7 +217,6 @@ public class AupRenderer : IDisposable
             var invertFilter = obj.Effects.OfType<InvertFilterEffect>().FirstOrDefault();
             if (invertFilter != null)
             {
-                // ▼▼▼ 修正点: Scaleの変更ではなく、boolプロパティをトグルする ▼▼▼
                 if (invertFilter.InvertX)
                 {
                     finalTransform.InvertX = !finalTransform.InvertX;
