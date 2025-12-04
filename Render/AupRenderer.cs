@@ -83,7 +83,7 @@ public class AupRenderer : IDisposable
     /// </summary>
     public void Play()
     {
-        if (IsFinished)
+        if (_isLooping && IsFinished)
         {
             Reset(); // フレームをリセットしてから再生
         }
