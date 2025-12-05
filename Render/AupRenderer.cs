@@ -339,6 +339,20 @@ public class AupRenderer : IDisposable
                 }
             }
 
+            // 拡大率フィルター
+            var scaleFilterOnGroup = groupObj.Effects.OfType<ScaleFilterEffect>().FirstOrDefault();
+            if (scaleFilterOnGroup != null)
+            {
+                float baseScale = scaleFilterOnGroup.BaseScale.GetValue(frame) / 100.0f;
+                float scaleX = scaleFilterOnGroup.X.GetValue(frame) / 100.0f;
+                float scaleY = scaleFilterOnGroup.Y.GetValue(frame) / 100.0f;
+
+                var currentScale = transform.Scale;
+                currentScale.X *= baseScale * scaleX;
+                currentScale.Y *= baseScale * scaleY;
+                transform.Scale = currentScale;
+            }
+
             // 透明度フィルター
             var opacityFilterOnGroup = groupObj.Effects.OfType<OpacityFilterEffect>().FirstOrDefault();
             if (opacityFilterOnGroup != null)
