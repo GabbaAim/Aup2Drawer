@@ -285,40 +285,50 @@ public class AupRenderer : IDisposable
         {
             if (!groupObj.IsVisible(frame)) continue;
 
+            // --- グループ制御自体のTransformを適用 ---
             var groupEffect = groupObj.Effects.OfType<GroupControlEffect>().FirstOrDefault();
-            if (groupEffect == null) continue;
-
-            // グループ制御の現在のTransformを計算
-            var groupScale = groupEffect.Scale.GetValue(frame) / 100.0f;
-            var groupPosition = new Vector2(
-                groupEffect.X.GetValue(frame),
-                groupEffect.Y.GetValue(frame)
-            );
-            var groupRotationZ = groupEffect.RotationZ.GetValue(frame);
-            var groupOpacity = 1.0f - (groupEffect.Opacity.GetValue(frame) / 100.0f);
-
-            // --- 正しい行列演算に基づいた変換 ---
-
-            // 1. 拡大・縮小を適用
-            //    現在のオブジェクトの位置を、グループの原点(0,0)からの相対ベクトルとみなし、拡大する。
-            transform.Position *= groupScale;
-
-            // 2. 回転を適用
-            //    拡大後の位置ベクトルを、グループの原点(0,0)を中心に回転させる。
-            if (groupRotationZ != 0)
+            if (groupEffect != null)
             {
-                var rotMatrix = Matrix3x2.CreateRotation(MathHelper.ToRadians(groupRotationZ));
-                transform.Position = Vector2.Transform(transform.Position, rotMatrix);
+                var groupScale = groupEffect.Scale.GetValue(frame) / 100.0f;
+                var groupPosition = new Vector2(
+                    groupEffect.X.GetValue(frame),
+                    groupEffect.Y.GetValue(frame)
+                );
+                var groupRotationZ = groupEffect.RotationZ.GetValue(frame);
+                var groupOpacity = 1.0f - (groupEffect.Opacity.GetValue(frame) / 100.0f);
+
+                // 拡大・縮小を適用
+                transform.Position *= groupScale;
+
+                // 回転を適用
+                if (groupRotationZ != 0)
+                {
+                    var rotMatrix = Matrix3x2.CreateRotation(MathHelper.ToRadians(groupRotationZ));
+                    transform.Position = Vector2.Transform(transform.Position, rotMatrix);
+                }
+
+                // 平行移動を適用
+                transform.Position += groupPosition;
+
+                // その他のプロパティを合成
+                transform.Scale *= groupScale;
+                transform.RotationZ += groupRotationZ;
+                transform.Opacity *= groupOpacity;
             }
 
-            // 3. 平行移動を適用
-            //    グループ自体の位置を加算する。
-            transform.Position += groupPosition;
-
-            // その他のプロパティを合成
-            transform.Scale *= groupScale;
-            transform.RotationZ += groupRotationZ;
-            transform.Opacity *= groupOpacity;
+            // --- グループ制御に付与されたフィルターを適用 (反転フィルター) ---
+            var invertFilterOnGroup = groupObj.Effects.OfType<InvertFilterEffect>().FirstOrDefault();
+            if (invertFilterOnGroup != null)
+            {
+                if (invertFilterOnGroup.InvertX)
+                {
+                    transform.InvertX = !transform.InvertX;
+                }
+                if (invertFilterOnGroup.InvertY)
+                {
+                    transform.InvertY = !transform.InvertY;
+                }
+            }
         }
     }
 
