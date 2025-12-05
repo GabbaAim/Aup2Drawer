@@ -109,6 +109,7 @@ public class AupParser
                             "グループ制御" => new GroupControlEffect(),
                             "拡大率" => new ScaleFilterEffect(),
                             "反転" => new InvertFilterEffect(),
+                            "透明度" => new OpacityFilterEffect(),
                             _ => new UnknownEffect(value)
                         };
                         currentObject.Effects.Add(currentEffect);
@@ -174,6 +175,10 @@ public class AupParser
                         {
                             if (key == "上下反転") invertFilterEffect.InvertY = (value == "1");
                             else if (key == "左右反転") invertFilterEffect.InvertX = (value == "1");
+                        }
+                        else if (currentEffect is OpacityFilterEffect opacityFilterEffect)
+                        {
+                            opacityFilterEffect.SetPropertyFromValueString(key, value, currentObject.Segments);
                         }
                     }
                 }

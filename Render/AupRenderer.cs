@@ -227,6 +227,15 @@ public class AupRenderer : IDisposable
                 }
             }
 
+            // 透明度フィルター
+            var opacityFilter = obj.Effects.OfType<OpacityFilterEffect>().FirstOrDefault();
+            if (opacityFilter != null)
+            {
+                // AviUtlの透明度は0=不透明, 100=透明なので、1.0から引く
+                float filterOpacity = 1.0f - (opacityFilter.Opacity.GetValue(frame) / 100.0f);
+                finalTransform.Opacity *= filterOpacity;
+            }
+
             // --- ステップ2: グループ制御のTransformを適用 ---
             ApplyGroupControls(frame, obj, ref finalTransform);
 
@@ -328,6 +337,14 @@ public class AupRenderer : IDisposable
                 {
                     transform.InvertY = !transform.InvertY;
                 }
+            }
+
+            // 透明度フィルター
+            var opacityFilterOnGroup = groupObj.Effects.OfType<OpacityFilterEffect>().FirstOrDefault();
+            if (opacityFilterOnGroup != null)
+            {
+                float filterOpacity = 1.0f - (opacityFilterOnGroup.Opacity.GetValue(frame) / 100.0f);
+                transform.Opacity *= filterOpacity;
             }
         }
     }
